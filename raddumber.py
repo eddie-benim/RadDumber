@@ -57,7 +57,7 @@ def run_async_task(task):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(task)
 
-def get_differential(image_path: str):
-    with open(image_path, "rb") as img:
-        result = run_async_task(Runner.run(triage_agent, img.read()))
+def get_differential(image_bytes: bytes):
+    # 👇 Wrap bytes in a dict for structured SDK input
+    result = run_async_task(Runner.run(triage_agent, {"image": image_bytes}))
     return result.final_output

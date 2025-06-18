@@ -40,7 +40,6 @@ diagnostic_agent = Agent(
         Output format must match this schema: {"diagnoses": [...], "explanation": "..."}
     """,
     model="gpt-4o",
-    input_type=RadiologyInput,
     output_type=DifferentialDiagnosis
 )
 

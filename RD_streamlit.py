@@ -16,10 +16,9 @@ if uploaded_file is not None:
 
     if st.button("Generate Differential Diagnosis"):
         with st.spinner("Analyzing the image..."):
-            with open("temp_input_image.png", "wb") as f:
-                f.write(uploaded_file.getvalue())
             try:
-                result = get_differential("temp_input_image.png")
+                image_bytes = uploaded_file.getvalue()
+                result = get_differential(image_bytes)
                 st.subheader("🩺 Differential Diagnosis")
                 st.markdown("**Explanation:**")
                 st.write(result.explanation)

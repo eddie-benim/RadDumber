@@ -8,33 +8,30 @@ from agents import Agent, Runner
 nest_asyncio.apply()
 client = OpenAI()
 
-# Output schema for structured diagnosis with probabilities
 class DiagnosisItem(BaseModel):
     condition: str
-    probability: int  # percentage
+    probability: int | None = None  # Now optional
 
 class DifferentialDiagnosis(BaseModel):
     diagnoses: list[DiagnosisItem]
     explanation: str
 
-# Postprocessing agent
 postprocess_agent = Agent(
     name="Radiology Postprocessor",
     instructions="""
-        You are a clinical assistant that takes in unstructured text describing a differential diagnosis from a medical image
-        and converts it into a structured JSON object with this schema:
+        You are a clinical assistant that receives a freeform diagnosis paragraph and converts it into structured JSON.
+        Your output should look like this:
         {
             "diagnoses": [
-                {"condition": "Pneumonia", "probability": 65},
-                {"condition": "Pulmonary edema", "probability": 25},
-                {"condition": "Pleural effusion", "probability": 10}
+                {"condition": "Cardiomegaly", "probability": 70},
+                {"condition": "Pleural effusion", "probability": 30}
             ],
-            "explanation": "Explanation of findings"
+            "explanation": "Key features observed and their interpretation."
         }
 
-        All diagnoses must include estimated probabilities (that add up to roughly 100%).
-        Format the diagnosis names as concise conditions.
-        If the input is irrelevant or nonsensical, return an empty diagnosis list and a brief explanation.
+        If the original paragraph does not contain explicit percentages, estimate them based on relative confidence.
+        If confidence is too ambiguous, include diagnoses without percentages, or distribute them evenly.
+        If nothing is relevant, return an empty diagnosis list and a brief explanation.
     """,
     model="gpt-4o",
     output_type=DifferentialDiagnosis

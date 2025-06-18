@@ -1,5 +1,5 @@
 streamlit
 openai
+openai-agents
 pydantic
 nest_asyncio
-agents-sdk

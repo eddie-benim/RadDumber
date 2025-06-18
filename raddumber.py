@@ -8,28 +8,38 @@ from agents import Agent, Runner
 nest_asyncio.apply()
 client = OpenAI()
 
-# Output schema for final result
+# Output schema for structured diagnosis with probabilities
+class DiagnosisItem(BaseModel):
+    condition: str
+    probability: int  # percentage
+
 class DifferentialDiagnosis(BaseModel):
-    diagnoses: list[str]
+    diagnoses: list[DiagnosisItem]
     explanation: str
 
-# Agent to structure and clean the freeform GPT-4o vision result
+# Postprocessing agent
 postprocess_agent = Agent(
     name="Radiology Postprocessor",
     instructions="""
         You are a clinical assistant that takes in unstructured text describing a differential diagnosis from a medical image
         and converts it into a structured JSON object with this schema:
         {
-            "diagnoses": ["Diagnosis A", "Diagnosis B", ...],
+            "diagnoses": [
+                {"condition": "Pneumonia", "probability": 65},
+                {"condition": "Pulmonary edema", "probability": 25},
+                {"condition": "Pleural effusion", "probability": 10}
+            ],
             "explanation": "Explanation of findings"
         }
-        If the input is irrelevant or nonsensical, return diagnoses: [] and a short explanation.
+
+        All diagnoses must include estimated probabilities (that add up to roughly 100%).
+        Format the diagnosis names as concise conditions.
+        If the input is irrelevant or nonsensical, return an empty diagnosis list and a brief explanation.
     """,
     model="gpt-4o",
     output_type=DifferentialDiagnosis
 )
 
-# Async runner utility
 def run_async_task(task):
     try:
         loop = asyncio.get_event_loop()
@@ -38,7 +48,6 @@ def run_async_task(task):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(task)
 
-# Main function used by Streamlit
 def get_differential(image_bytes: bytes):
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 

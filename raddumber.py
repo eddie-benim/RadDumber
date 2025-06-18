@@ -4,6 +4,7 @@ from agents import Agent, Runner
 from pydantic import BaseModel
 
 nest_asyncio.apply()
+set_default_openai_key(st.secrets["OPENAI_API_KEY"])
 
 class DifferentialDiagnosis(BaseModel):
     diagnoses: list[str]

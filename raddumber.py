@@ -1,18 +1,19 @@
 import asyncio
 import nest_asyncio
-import openai
 import base64
-from agents import Agent, Runner
+from openai import OpenAI
 from pydantic import BaseModel
+from agents import Agent, Runner
 
 nest_asyncio.apply()
+client = OpenAI()
 
-# Step 1: Post-processing structure (text-to-structured output)
+# Output schema for final result
 class DifferentialDiagnosis(BaseModel):
     diagnoses: list[str]
     explanation: str
 
-# Step 2: Post-processing agent (takes raw diagnosis text, parses it, adds structure)
+# Agent to structure and clean the freeform GPT-4o vision result
 postprocess_agent = Agent(
     name="Radiology Postprocessor",
     instructions="""
@@ -28,7 +29,7 @@ postprocess_agent = Agent(
     output_type=DifferentialDiagnosis
 )
 
-# Step 3: Utility for async agent call
+# Async runner utility
 def run_async_task(task):
     try:
         loop = asyncio.get_event_loop()
@@ -37,12 +38,11 @@ def run_async_task(task):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(task)
 
-# Step 4: Primary function — vision model + agent postprocessing
+# Main function used by Streamlit
 def get_differential(image_bytes: bytes):
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    # Ask gpt-4o vision to interpret image directly
-    vision_response = openai.ChatCompletion.create(
+    vision_response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {
@@ -55,8 +55,6 @@ def get_differential(image_bytes: bytes):
         ]
     )
 
-    diagnosis_text = vision_response["choices"][0]["message"]["content"]
-
-    # Postprocess the diagnosis text through the agent
+    diagnosis_text = vision_response.choices[0].message.content
     result = run_async_task(Runner.run(postprocess_agent, diagnosis_text))
     return result.final_output

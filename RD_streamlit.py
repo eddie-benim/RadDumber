@@ -1,5 +1,8 @@
 import streamlit as st
 from raddumber import get_differential
+from agents import set_default_openai_key
+
+set_default_openai_key(st.secrets["OPENAI_API_KEY"])
 
 st.set_page_config(page_title="X-ray Diagnostic Assistant", layout="centered")
 

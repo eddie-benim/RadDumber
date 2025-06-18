@@ -9,7 +9,7 @@ st.write("Upload a chest X-ray or other diagnostic image. The assistant will gen
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
 
     if st.button("Generate Differential Diagnosis"):
         with st.spinner("Analyzing the image..."):

@@ -1,12 +1,12 @@
 import asyncio
 import nest_asyncio
-from agents import Agent, Runner
-from pydantic import BaseModel
 from base64 import b64encode
+from pydantic import BaseModel
+from agents import Agent, Runner
 
 nest_asyncio.apply()
 
-class RadiologyInput(BaseModel):
+class RadiologyImageInput(BaseModel):
     image_base64: str
 
 class DifferentialDiagnosis(BaseModel):
@@ -65,6 +65,6 @@ def run_async_task(task):
 
 def get_differential(image_bytes: bytes):
     image_b64 = b64encode(image_bytes).decode("utf-8")
-    input_data = {"image_base64": image_b64}
-    result = run_async_task(Runner.run(triage_agent, input_data))
+    input_model = RadiologyImageInput(image_base64=image_b64)
+    result = run_async_task(Runner.run(triage_agent, input_model))
     return result.final_output

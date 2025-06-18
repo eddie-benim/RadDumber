@@ -1,60 +1,34 @@
 import asyncio
 import nest_asyncio
-from base64 import b64encode
-from pydantic import BaseModel
+import openai
+import base64
 from agents import Agent, Runner
+from pydantic import BaseModel
 
 nest_asyncio.apply()
 
-class RadiologyImageInput(BaseModel):
-    image_base64: str
-
+# Step 1: Post-processing structure (text-to-structured output)
 class DifferentialDiagnosis(BaseModel):
     diagnoses: list[str]
     explanation: str
 
-class ImageGuardrail(BaseModel):
-    is_relevant: bool
-    reason: str
-
-image_guardrail_agent = Agent(
-    name="Image Guardrail",
+# Step 2: Post-processing agent (takes raw diagnosis text, parses it, adds structure)
+postprocess_agent = Agent(
+    name="Radiology Postprocessor",
     instructions="""
-        You are a medical content filter. Your job is to determine whether an uploaded image is relevant for diagnostic radiology.
-        Accept only medical images such as X-rays, CT scans, MRIs, or ultrasound images. Reject non-diagnostic or unrelated content.
-        Respond in this format: {"is_relevant": true/false, "reason": "..."}
-    """,
-    output_type=ImageGuardrail,
-    model="gpt-4o"
-)
-
-diagnostic_agent = Agent(
-    name="Radiology Diagnostic Agent",
-    instructions="""
-        You are a radiology assistant trained to interpret diagnostic images.
-        You are given a base64-encoded image. Use your vision capabilities to decode the image and return a differential diagnosis.
-        The output must include:
-        - diagnoses: a list of possible radiological findings
-        - explanation: justification based on observed features
-
-        Output format must match this schema: {"diagnoses": [...], "explanation": "..."}
+        You are a clinical assistant that takes in unstructured text describing a differential diagnosis from a medical image
+        and converts it into a structured JSON object with this schema:
+        {
+            "diagnoses": ["Diagnosis A", "Diagnosis B", ...],
+            "explanation": "Explanation of findings"
+        }
+        If the input is irrelevant or nonsensical, return diagnoses: [] and a short explanation.
     """,
     model="gpt-4o",
     output_type=DifferentialDiagnosis
 )
 
-triage_agent = Agent(
-    name="Radiology Triage Agent",
-    instructions="""
-        You are responsible for routing uploaded images through the proper pipeline.
-        First, consult the Image Guardrail to determine if the input is relevant to diagnostic radiology.
-        If the image is acceptable, forward it to the Radiology Diagnostic Agent.
-        If not, return the reason why the image was rejected.
-    """,
-    handoffs=[image_guardrail_agent, diagnostic_agent],
-    model="gpt-4o"
-)
-
+# Step 3: Utility for async agent call
 def run_async_task(task):
     try:
         loop = asyncio.get_event_loop()
@@ -63,8 +37,26 @@ def run_async_task(task):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(task)
 
+# Step 4: Primary function — vision model + agent postprocessing
 def get_differential(image_bytes: bytes):
-    image_b64 = b64encode(image_bytes).decode("utf-8")
-    input_model = RadiologyImageInput(image_base64=image_b64)
-    result = run_async_task(Runner.run(triage_agent, input_model))
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    # Ask gpt-4o vision to interpret image directly
+    vision_response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "You are a radiology assistant. Analyze this chest X-ray and describe the differential diagnosis."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
+                ]
+            }
+        ]
+    )
+
+    diagnosis_text = vision_response["choices"][0]["message"]["content"]
+
+    # Postprocess the diagnosis text through the agent
+    result = run_async_task(Runner.run(postprocess_agent, diagnosis_text))
     return result.final_output

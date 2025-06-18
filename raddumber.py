@@ -2,6 +2,7 @@ import asyncio
 import nest_asyncio
 from agents import Agent, Runner
 from pydantic import BaseModel
+from agents import set_default_openai_key
 
 nest_asyncio.apply()
 set_default_openai_key(st.secrets["OPENAI_API_KEY"])

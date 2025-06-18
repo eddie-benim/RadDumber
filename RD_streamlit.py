@@ -19,12 +19,23 @@ if uploaded_file is not None:
             try:
                 image_bytes = uploaded_file.getvalue()
                 result = get_differential(image_bytes)
+
                 st.subheader("🩺 Differential Diagnosis")
                 st.markdown("**Explanation:**")
                 st.write(result.explanation)
-                st.markdown("**Possible Diagnoses:**")
-                for diag in result.diagnoses:
-                    st.markdown(f"- {diag}")
+
+                if hasattr(result, "diagnoses") and result.diagnoses:
+                    st.markdown("**Possible Diagnoses:**")
+                    for diag in result.diagnoses:
+                        condition = getattr(diag, "condition", None) or diag.get("condition")
+                        probability = getattr(diag, "probability", None) or diag.get("probability")
+                        if condition and probability is not None:
+                            st.markdown(f"- **{condition}** — {probability}%")
+                        elif condition:
+                            st.markdown(f"- **{condition}**")
+                else:
+                    st.info("No diagnoses were confidently identified.")
+
             except Exception as e:
                 st.error("Something went wrong during analysis.")
                 st.exception(e)

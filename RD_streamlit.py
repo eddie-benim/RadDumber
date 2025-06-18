@@ -6,7 +6,7 @@ set_default_openai_key(st.secrets["OPENAI_API_KEY"])
 
 st.set_page_config(page_title="X-ray Diagnostic Assistant", layout="centered")
 
-st.title("🩻 X-ray Diagnostic Assistant")
+st.title("X-ray Diagnostic Assistant")
 st.write("Upload a chest X-ray or other diagnostic image. The assistant will generate a list of possible diagnoses based on the image.")
 
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
@@ -20,7 +20,7 @@ if uploaded_file is not None:
                 image_bytes = uploaded_file.getvalue()
                 result = get_differential(image_bytes)
 
-                st.subheader("🩺 Differential Diagnosis")
+                st.subheader("Differential Diagnosis")
                 st.markdown("**Explanation:**")
                 st.write(result.explanation)
 

@@ -1,2 +1,0 @@
-# RadDumber
-Radiology for dummies

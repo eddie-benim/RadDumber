@@ -2,8 +2,12 @@ import asyncio
 import nest_asyncio
 from agents import Agent, Runner
 from pydantic import BaseModel
+from base64 import b64encode
 
 nest_asyncio.apply()
+
+class RadiologyInput(BaseModel):
+    image_base64: str
 
 class DifferentialDiagnosis(BaseModel):
     diagnoses: list[str]
@@ -27,13 +31,16 @@ image_guardrail_agent = Agent(
 diagnostic_agent = Agent(
     name="Radiology Diagnostic Agent",
     instructions="""
-        You are a radiology assistant trained to interpret diagnostic images like chest X-rays, CT scans, or MRI scans.
-        Given an appropriate diagnostic image, you will return a differential diagnosis as a list of possible conditions with a brief explanation.
-        You are not allowed to make a definitive diagnosis.
-        Focus strictly on image content, without assuming patient history or clinical symptoms.
-        Output format should follow this schema: {"diagnoses": [...], "explanation": "..."}
+        You are a radiology assistant trained to interpret diagnostic images.
+        You are given a base64-encoded image. Use your vision capabilities to decode the image and return a differential diagnosis.
+        The output must include:
+        - diagnoses: a list of possible radiological findings
+        - explanation: justification based on observed features
+
+        Output format must match this schema: {"diagnoses": [...], "explanation": "..."}
     """,
     model="gpt-4o",
+    input_type=RadiologyInput,
     output_type=DifferentialDiagnosis
 )
 
@@ -58,6 +65,7 @@ def run_async_task(task):
     return loop.run_until_complete(task)
 
 def get_differential(image_bytes: bytes):
-    # 👇 Wrap bytes in a dict for structured SDK input
-    result = run_async_task(Runner.run(triage_agent, {"image": image_bytes}))
+    image_b64 = b64encode(image_bytes).decode("utf-8")
+    input_data = {"image_base64": image_b64}
+    result = run_async_task(Runner.run(triage_agent, input_data))
     return result.final_output
